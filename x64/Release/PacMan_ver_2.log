@@ -1,9 +1,0 @@
-﻿  PacMan_ver_2.c
-C:\Users\Alexey\source\repos\PacMan\PacMan_ver_2\PacMan_ver_2.c(143,39): warning C4244: =: преобразование "int" в "float", возможна потеря данных
-C:\Users\Alexey\source\repos\PacMan\PacMan_ver_2\PacMan_ver_2.c(143,67): warning C4244: =: преобразование "int" в "float", возможна потеря данных
-  Создание кода
-  3 of 9 functions (33.3%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    0 functions had inline decision re-evaluated but remain unchanged
-  Создание кода завершено
-  PacMan_ver_2.vcxproj -> C:\Users\Alexey\source\repos\PacMan\x64\Release\PacMan_ver_2.exe
