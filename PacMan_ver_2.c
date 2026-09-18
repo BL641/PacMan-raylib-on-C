@@ -15,7 +15,7 @@ int map[28][28] = {
     {0,1,1,1,1,3,1,1,1,3,1,3,1,1,1,3,1,1,1,1},
     {0,3,3,3,1,3,1,3,3,3,3,3,3,3,1,3,1,3,3,3},
     {0,1,1,1,1,3,1,3,1,1,3,1,1,3,1,3,1,1,1,1},
-    {0,0,5,3,3,3,3,3,1,3,3,3,1,3,3,3,3,3,6,0},
+    {0,5,3,3,3,3,3,3,1,3,3,3,1,3,3,3,3,3,3,6},
     {0,1,1,1,1,3,1,3,1,1,1,1,1,3,1,3,1,1,1,1},
     {0,3,3,3,1,3,1,3,3,3,3,3,3,3,1,3,1,3,3,3},
     {0,1,1,1,1,3,1,3,1,1,1,1,1,3,1,3,1,1,1,1},
@@ -64,7 +64,6 @@ int itemsMap[28][28] = { {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
 };
 
 typedef struct PacMan {
-    int walkStatus;
     double moveTimer;
     int score, fscore;
     int level;
@@ -78,6 +77,8 @@ typedef struct PacMan {
     void (*update)(struct PacMan* self);
     void (*move)(struct PacMan* self);
     void (*draw)(struct PacMan* self);
+    void (*eat)(struct PacMan* self);
+    void (*portal)(struct PacMan* self);
 } PacMan;
 
 void MapDraw(PacMan* self) {
@@ -96,42 +97,49 @@ void MapDraw(PacMan* self) {
 }
 
 
-
-void PacUpdate(PacMan* self) {
-    self->moveTimer += GetFrameTime();
+void PacEat(PacMan* self) {
     if (itemsMap[self->y][self->x] == 2) {
         itemsMap[self->y][self->x] = 0;
+        self->score += 10;
     }
-    if (self->moveTimer >= 0.15f) {
-        self->moveTimer = 0;
-        if (map[self->y + self->wantDirY][self->x + self->wantDirX] != 1) {
-            self->dirY = self->wantDirY;
-            self->dirX = self->wantDirX;
+}
 
-            
-            self->y += self->dirY; self->x += self->dirX;
-            self->y_coo = self->y * 32; self->x_coo = self->x * 32;
-            if (itemsMap[self->y][self->x] == 2) {
-                itemsMap[self->y][self->x] = 0;
-                self->score += 10;
-            }
-            if (map[self->y][self->x] == 5){
-                
-                for (int x = 0; x < 21; x++) {
-                    if (map[self->y][x] == 6) {
-                        self->x = x;
-                    }
-                }              
-            }
-            else if (map[self->y][self->x] == 6) {
-                for (int x = 0; x < 21; x++) {
-                    if (map[self->y][x] == 5) {
-                        self->x = x;
-                    }
-                }
+void Portals(PacMan* self) {
+    if (map[self->y][self->x] == 5) {
+        for (int x = 0; x < 21; x++) {
+            if (map[self->y][x] == 6) {
+                self->x = x - 1;
+                // self->wantDirX = -1;
+                // self->wantDirY = 0;
             }
         }
     }
+    else if (map[self->y][self->x] == 6) {
+        for (int x = 0; x < 21; x++) {
+            if (map[self->y][x] == 5) {
+                self->x = x + 1;
+                // self->wantDirX = 1;
+                // self->wantDirY = 0;
+            }
+        }
+    }
+}
+
+
+void PacUpdate(PacMan* self) {
+    self->moveTimer += GetFrameTime();
+    if (self->moveTimer >= 0.15f) {
+            self->moveTimer = 0;
+            if (map[self->y + self->wantDirY][self->x + self->wantDirX] != 1) {
+                self->dirY = self->wantDirY;
+                self->dirX = self->wantDirX;
+
+
+                self->y += self->dirY; self->x += self->dirX;
+                self->y_coo = self->y * 32; self->x_coo = self->x * 32;
+            }
+    }
+   
 }
 
 void PacDraw(PacMan* self) {
@@ -139,18 +147,20 @@ void PacDraw(PacMan* self) {
 }
 
 void PacMove(PacMan* self) {
-    if (IsKeyDown(KEY_W) && map[self->y - 1][self->x] != 1 && map[self->y - 1][self->x] != 0) {
-        self->wantDirX = 0; self->wantDirY = -1;
-    }
-    else if (IsKeyDown(KEY_S) && map[self->y + 1][self->x] != 1 && map[self->y - 1][self->x] != 0) {
-        self->wantDirX = 0; self->wantDirY = 1;
-    }
-    else if (IsKeyDown(KEY_A) && map[self->y][self->x - 1] != 1 && map[self->y - 1][self->x] != 0) {
-        self->wantDirX = -1; self->wantDirY = 0;
-    }
-    else if (IsKeyDown(KEY_D) && map[self->y][self->x + 1] != 1 && map[self->y - 1][self->x] != 0) {
-        self->wantDirX = 1; self->wantDirY = 0;
-    }
+
+        if (IsKeyDown(KEY_W) && map[self->y - 1][self->x] != 1) {
+            self->wantDirX = 0; self->wantDirY = -1;
+        }
+        else if (IsKeyDown(KEY_S) && map[self->y + 1][self->x] != 1) {
+            self->wantDirX = 0; self->wantDirY = 1;
+        }
+        else if (IsKeyDown(KEY_A) && map[self->y][self->x - 1] != 1) {
+            self->wantDirX = -1; self->wantDirY = 0;
+        }
+        else if (IsKeyDown(KEY_D) && map[self->y][self->x + 1] != 1) {
+            self->wantDirX = 1; self->wantDirY = 0;
+        }
+
 }
 
 void CheckGameSustain(PacMan* self) {
@@ -169,7 +179,6 @@ void CheckGameSustain(PacMan* self) {
 }
 
 void PacInit(PacMan* self) {
-    self->walkStatus = 0;
     self->level = 0;
     self->levelComplete = 0; 
 
@@ -190,6 +199,8 @@ void PacInit(PacMan* self) {
     self->update = PacUpdate;
     self->move = PacMove;
     self->draw = PacDraw;
+    self->eat = PacEat;
+    self->portal = Portals;
 }
 
 int main() {
@@ -201,6 +212,8 @@ int main() {
     while (!WindowShouldClose()) {
         pac.move(&pac);
         pac.update(&pac);
+        pac.eat(&pac);
+        pac.portal(&pac);
 
         BeginDrawing();
         ClearBackground(BLACK);
