@@ -63,6 +63,16 @@ int itemsMap[28][28] = { {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0},
                          {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}
 };
 
+// Состояния ПакМана
+enum PacSustain {
+    SLEEP = 0,
+    WALK_UP = 1,
+    WALK_DOWN = 2,
+    WALK_RIGHT = 3,
+    WALK_LEFT = 4,
+    DEATH = 5
+};
+
 // Структура PacMan
 typedef struct PacMan {
      
@@ -82,6 +92,12 @@ typedef struct PacMan {
     int speed;
     // =================
 
+    // Фреймы
+    // =================
+    enum PacSustain SustChoice;
+    Texture2D texMassive[6];
+    // =================
+
 
     // методы
     // =================
@@ -92,6 +108,38 @@ typedef struct PacMan {
     void (*portal)(struct PacMan* self);
     // =================
 } PacMan;
+
+
+// Функция инициализации текстур 
+static void PacTextureInit(PacMan* self) {
+    for (int i = 0; i < 6; i++) {
+        switch (i) {
+        case SLEEP: {
+            *(self->texMassive + i);
+            break;
+        }
+        case WALK_UP: {
+            *(self->texMassive + i) = LoadTexture("frames/PacMan_WalkUp.png");
+            break;
+        }
+        case WALK_DOWN: {
+            *(self->texMassive + i) = LoadTexture("frames/PacMan_WalkDown.png");
+            break;
+        }
+        case WALK_RIGHT: {
+            *(self->texMassive + i) = LoadTexture("frames/PacMan_WalkRight.png");
+            break;
+        }
+        case WALK_LEFT: {
+            *(self->texMassive + i) = LoadTexture("frames/PacMan_WalkLeft.png");
+            break;
+        }
+        case DEATH: {
+            break;
+        }
+        }
+    }
+}
 
 // Функция отрисовки карты
 static void MapDraw(PacMan* self) {
@@ -115,6 +163,7 @@ static void PacEat(PacMan* self) {
         itemsMap[(self->py + 16) / 32][(self->px + 16)/ 32] = 0;
         self->score += 10;
     }
+    
 }
 
 // Функция реализации порталов
@@ -152,6 +201,18 @@ static void PacUpdate(PacMan* self) {
             if (map[nextY][nextX] != 1 && map[nextY][nextX] != 0) {
                 self->dirY = self->wantDirY;
                 self->dirX = self->wantDirX;
+                if (self->dirY == -1 && self->dirX == 0) {
+                    self->SustChoice = WALK_UP;
+                }
+                else if (self->dirY == 1 && self->dirX == 0) {
+                    self->SustChoice = WALK_DOWN;
+                }
+                else if (self->dirY == 0 && self->dirX == -1) {
+                    self->SustChoice = WALK_LEFT;
+                }
+                else if (self->dirY == 0 && self->dirX == 1) {
+                    self->SustChoice = WALK_RIGHT;
+                }
             }
             
             int frontY = self->py / 32 + self->dirY;
@@ -171,24 +232,33 @@ static void PacUpdate(PacMan* self) {
         }
 }
 
+
+
 // Функция отрисовки ПакМана
 static void PacDraw(PacMan* self) {
-    DrawRectangle(self->px, self->py, 32, 32, YELLOW);
+    Texture2D tex = self->texMassive[self->SustChoice];
+    int frameCount = 4; // сколько кадров в PacMan_WalkLeft.png
+    int frameW = tex.width / frameCount;
+    int frameH = tex.height;
+    int frame = (int)(GetTime() / 0.08f) % frameCount;
+    Rectangle src = { frame * frameW, 0, frameW, frameH };
+    Vector2 pos = { self->px, self->py };
+    DrawTextureRec(tex, src, pos, WHITE);
 }
 
 // Функция движения ПакМана 
 static void PacMove(PacMan* self) {
 
-    if (IsKeyDown(KEY_W)) {
+    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
         self->wantDirX = 0; self->wantDirY = -1;
     }
-    else if (IsKeyDown(KEY_S)) {
+    else if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
         self->wantDirX = 0; self->wantDirY = 1;
     }
-    else if (IsKeyDown(KEY_A)) {
+    else if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
         self->wantDirX = -1; self->wantDirY = 0;
     }
-    else if (IsKeyDown(KEY_D)) {
+    else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
         self->wantDirX = 1; self->wantDirY = 0;
     }
 
@@ -230,6 +300,12 @@ static void PacInit(PacMan* self) {
     self->py = 736; self->y = self->py / 32;
     // =====================
 
+     // Фреймы
+    // =================
+    PacTextureInit(self);
+    self->SustChoice = WALK_LEFT;
+    // =================
+
     // методы
     // =====================
     self->update = PacUpdate;
@@ -245,19 +321,22 @@ int main() {
 
     PacMan pac;
     PacInit(&pac);
-
+    
     while (!WindowShouldClose()) {
         pac.move(&pac);
         pac.update(&pac);
         pac.eat(&pac);
         pac.portal(&pac);
-
+        
         BeginDrawing();
         ClearBackground(BLACK);
         MapDraw(&pac);
         pac.draw(&pac);
         EndDrawing();
         CheckGameSustain(&pac);
+    }
+    for (int i = 0; i < 6; i++) {
+        UnloadTexture(pac.texMassive[i]);
     }
 
     CloseWindow();
