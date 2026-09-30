@@ -78,6 +78,9 @@ typedef struct PacMan {
      
     // вспомогательные поля
     // =================
+    int start;
+    float round_delay;
+    int status;
     float timer;
     int score, fscore;
     int level;
@@ -201,6 +204,7 @@ static void PacUpdate(PacMan* self) {
             if (map[nextY][nextX] != 1 && map[nextY][nextX] != 0) {
                 self->dirY = self->wantDirY;
                 self->dirX = self->wantDirX;
+
                 if (self->dirY == -1 && self->dirX == 0) {
                     self->SustChoice = WALK_UP;
                 }
@@ -213,6 +217,8 @@ static void PacUpdate(PacMan* self) {
                 else if (self->dirY == 0 && self->dirX == 1) {
                     self->SustChoice = WALK_RIGHT;
                 }
+                self->status = 0;
+                
             }
             
             int frontY = self->py / 32 + self->dirY;
@@ -221,6 +227,8 @@ static void PacUpdate(PacMan* self) {
             if (map[frontY][frontX] == 1) {
                 self->dirY = 0;
                 self->dirX = 0;
+
+                self->status = 1;
             }
 
         }
@@ -237,31 +245,52 @@ static void PacUpdate(PacMan* self) {
 // Функция отрисовки ПакМана
 static void PacDraw(PacMan* self) {
     Texture2D tex = self->texMassive[self->SustChoice];
-    int frameCount = 4; // сколько кадров в PacMan_WalkLeft.png
+    
+    int frameCount = 4;
     int frameW = tex.width / frameCount;
     int frameH = tex.height;
     int frame = (int)(GetTime() / 0.08f) % frameCount;
+    
     Rectangle src = { frame * frameW, 0, frameW, frameH };
     Vector2 pos = { self->px, self->py };
-    DrawTextureRec(tex, src, pos, WHITE);
+    
+    if (!self->status) {
+        DrawTextureRec(tex, src, pos, WHITE);
+    }
+    else {
+        if (self->status == 2) {
+            frameCount = 2;
+            frame = frameCount;
+            src.x = frame * frameW;
+
+            DrawTextureRec(tex, src, pos, WHITE);
+        }
+        
+        frameCount = 1;
+        frame = frameCount;
+        src.x = frame * frameW;
+
+        DrawTextureRec(tex, src, pos, WHITE);
+        
+    }
 }
 
 // Функция движения ПакМана 
 static void PacMove(PacMan* self) {
-
-    if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
-        self->wantDirX = 0; self->wantDirY = -1;
+    if (self->start) {
+        if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP)) {
+            self->wantDirX = 0; self->wantDirY = -1;
+        }
+        else if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
+            self->wantDirX = 0; self->wantDirY = 1;
+        }
+        else if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
+            self->wantDirX = -1; self->wantDirY = 0;
+        }
+        else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
+            self->wantDirX = 1; self->wantDirY = 0;
+        }
     }
-    else if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) {
-        self->wantDirX = 0; self->wantDirY = 1;
-    }
-    else if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
-        self->wantDirX = -1; self->wantDirY = 0;
-    }
-    else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
-        self->wantDirX = 1; self->wantDirY = 0;
-    }
-
 }
 
 // Функция проверки состояния игры
@@ -284,6 +313,9 @@ static void CheckGameSustain(PacMan* self) {
 static void PacInit(PacMan* self) {
     // вспомогательные поля
     // =====================
+    self->round_delay = 3.0f;
+    self->start = 0;
+    self->status = 0;
     self->timer = 0;
     self->level = 0;
     self->levelComplete = 0;
@@ -293,8 +325,8 @@ static void PacInit(PacMan* self) {
 
     //Движение пакмана
     // =====================
-    self->dirX = 0; self->dirY = 0;
-    self->wantDirX = -1; self->wantDirY = 0;
+    self->dirX = -1; self->dirY = 0;
+    self->wantDirX = 0; self->wantDirY = 0;
     self->speed = 1;
     self->px = 320; self->x = self->px / 32;
     self->py = 736; self->y = self->py / 32;
@@ -319,19 +351,37 @@ static void PacInit(PacMan* self) {
 int main() {
     InitWindow(675, 900, "PacMan");
 
+    //float round_delay = 3.0f;
+
     PacMan pac;
     PacInit(&pac);
-    
+
+
     while (!WindowShouldClose()) {
-        pac.move(&pac);
-        pac.update(&pac);
-        pac.eat(&pac);
-        pac.portal(&pac);
+        if (pac.round_delay > 0 && pac.start == 0) {
+            pac.status = 2;
+
+            pac.round_delay -= GetFrameTime();
+        }
+        else {
+            if (pac.round_delay < 0.0f) {
+                pac.status = 0;
+                pac.start = 1;
+                pac.round_delay = 3.0f;
+            }
+            pac.move(&pac);
+            pac.update(&pac);
+            pac.eat(&pac);
+            pac.portal(&pac);
+        }
         
         BeginDrawing();
         ClearBackground(BLACK);
         MapDraw(&pac);
         pac.draw(&pac);
+        if (pac.round_delay > 0 && pac.start == 0) {
+            DrawText("READY!", 280, 480, 32, YELLOW);
+        }
         EndDrawing();
         CheckGameSustain(&pac);
     }
